@@ -486,7 +486,7 @@ main(void)
   return 0;
 #endif
   app_startup();
-  putenv("TZ=MET-1METDST");
+  setenv("TZ", "MET-1METDST", TRUE);
   tzset();
 
   configuration = cfg_new_snippet();

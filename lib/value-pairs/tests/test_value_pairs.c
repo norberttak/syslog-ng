@@ -148,7 +148,7 @@ main(int argc, char *argv[])
   GlobalConfig *cfg;
 
   app_startup();
-  putenv("TZ=MET-1METDST");
+  setenv("TZ", "MET-1METDST", TRUE);
   tzset();
 
   cfg = cfg_new_snippet();
