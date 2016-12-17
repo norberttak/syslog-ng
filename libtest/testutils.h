@@ -129,8 +129,6 @@ extern gchar *current_testcase_file;
 
 gboolean testutils_deinit(void);
 
-gchar *basename_const(const gchar *file);
-
 #define testcase_begin(description_template, ...) \
     do { \
       if (current_testcase_description != NULL) \
@@ -142,7 +140,7 @@ gchar *basename_const(const gchar *file);
       current_testcase_description = g_string_sized_new(0); \
       g_string_printf(current_testcase_description, description_template, ##__VA_ARGS__); \
       current_testcase_function = __FUNCTION__; \
-      current_testcase_file = basename_const(__FILE__); \
+      current_testcase_file = g_path_get_basename(__FILE__); \
     } while (0)
 
 #define testcase_end() \
