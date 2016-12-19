@@ -52,13 +52,13 @@ AM_CFLAGS = -Wall \
 if ENABLE_EXTRA_WARNINGS
 
 AM_CFLAGS += \
-        -Wno-empty-body \
-        -Wno-override-init \
-        -Wignored-qualifiers \
-        -Wmissing-parameter-type \
-        -Wold-style-declaration \
-        -Wuninitialized \
-        -Wunused-but-set-parameter \
+	-Wno-empty-body \
+	-Wno-override-init \
+	-Wignored-qualifiers \
+	-Wmissing-parameter-type \
+	-Wold-style-declaration \
+	-Wuninitialized \
+	-Wunused-but-set-parameter \
 	-Wcast-align \
 	-Wdeprecated \
 	-Wdeprecated-declarations \
