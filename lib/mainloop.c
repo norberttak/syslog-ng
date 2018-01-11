@@ -91,6 +91,7 @@
 ThreadId main_thread_handle;
 GCond thread_halt_cond;
 GMutex workers_running_lock = G_STATIC_MUTEX_INIT;
+volatile gint main_loop_workers_running;
 
 struct _MainLoop
 {
