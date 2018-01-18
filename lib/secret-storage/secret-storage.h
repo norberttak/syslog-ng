@@ -37,14 +37,14 @@ typedef struct
 
 typedef void(*SecretStorageCB)(Secret *secret, gpointer user_data);
 
-void secret_storage_init();
-void secret_storage_deinit();
+void secret_storage_init() PUBLIC;
+void secret_storage_deinit() PUBLIC;
 
 #define secret_storage_store_string(key, secret) secret_storage_store_secret(key, secret, -1)
-gboolean secret_storage_store_secret(gchar *key, gchar *secret, gsize len);
+gboolean secret_storage_store_secret(gchar *key, gchar *secret, gsize len) PUBLIC;
 
-void secret_storage_with_secret(gchar *key, SecretStorageCB func, gpointer user_data);
-Secret *secret_storage_get_secret_by_name(gchar *key);
-void secret_storage_put_secret(Secret *self);
+void secret_storage_with_secret(gchar *key, SecretStorageCB func, gpointer user_data) PUBLIC;
+Secret *secret_storage_get_secret_by_name(gchar *key) PUBLIC;
+void secret_storage_put_secret(Secret *self) PUBLIC;
 
 #endif
