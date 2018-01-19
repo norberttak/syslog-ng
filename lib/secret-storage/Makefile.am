@@ -6,7 +6,8 @@ lib_secret_storageinclude_HEADERS =     \
   lib/secret-storage/secret-storage.h
 
 lib_secret_storage_libsecret_storage_la_SOURCES =             \
-  lib/secret-storage/secret-storage.c
+  lib/secret-storage/secret-storage.c	\
+  lib/secret-storage/nondumpable-allocator.c
 
 lib_secret_storage_libsecret_storage_la_CFLAGS = -fvisibility=hidden
 
