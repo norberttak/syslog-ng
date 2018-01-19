@@ -20,6 +20,8 @@
  *
  */
 
+#include <criterion/criterion.h>
+
 #include <syslog-ng.h>
 #include <logmsg/logmsg.h>
 #include <template_lib.h>
@@ -28,7 +30,7 @@
 
 #include "cfg.h"
 
-MsgFormatOptions parse_options;
+extern MsgFormatOptions parse_options;
 
 void
 stardate_assert(const gchar *msg_str, const int precision, const gchar *expected)
@@ -37,10 +39,13 @@ stardate_assert(const gchar *msg_str, const int precision, const gchar *expected
   LogMessage *logmsg = log_msg_new(msg_str, strlen(msg_str), NULL, &parse_options);
 
   char *template_command;
+  int ret_val;
   if (precision == -1)
-    asprintf(&template_command, "$(stardate $UNIXTIME)");
+    ret_val = asprintf(&template_command, "$(stardate $UNIXTIME)");
   else
-    asprintf(&template_command, "$(stardate --digits %d $UNIXTIME)", precision);
+    ret_val = asprintf(&template_command, "$(stardate --digits %d $UNIXTIME)", precision);
+
+  cr_assert(ret_val != -1);
   assert_template_format_msg(template_command, expected, logmsg);
   free(template_command);
 
