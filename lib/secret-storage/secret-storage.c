@@ -60,14 +60,9 @@ secret_storage_init()
 {
   if (g_atomic_int_dec_and_test(&secret_manager_uninitialized))
     {
-      secret_manager = g_hash_table_new_full(g_str_hash,
-                                             g_str_equal,
-                                             g_free,
+      secret_manager = g_hash_table_new_full(g_str_hash, g_str_equal, g_free,
                                              (GDestroyNotify)secret_storage_put_secret);
       g_assert(secret_manager);
-      SecretStorage *single_secret_storage = secret_storage_new(SECRET_STORAGE_INITIAL_SIZE);
-      g_assert(single_secret_storage);
-      g_hash_table_insert(secret_manager, g_strdup("ONLY_SECRET"), single_secret_storage);
     }
   else
     g_assert_not_reached();
@@ -87,12 +82,13 @@ secret_storage_store_secret(gchar *key, gchar *secret, gsize len)
   if (len == -1)
     len = strlen(secret) + 1;
 
-  if (len > SECRET_STORAGE_INITIAL_SIZE)
+  SecretStorage *secret_storage = secret_storage_new(len);
+  if (!secret_storage)
     return FALSE;
 
-  SecretStorage *secret_storage = g_hash_table_lookup(secret_manager, "ONLY_SECRET");
   secret_storage->secret.len = len;
   memcpy(&secret_storage->secret.data, secret, len);
+  g_hash_table_insert(secret_manager, strdup(key), secret_storage);
 
   return TRUE;
 }
@@ -109,7 +105,9 @@ copy_secret(Secret *self)
 Secret *
 secret_storage_get_secret_by_name(gchar *key)
 {
-  SecretStorage *secret_storage = g_hash_table_lookup(secret_manager, "ONLY_SECRET");
+  SecretStorage *secret_storage = g_hash_table_lookup(secret_manager, key);
+  if (!secret_storage)
+    return NULL;
   return copy_secret(&secret_storage->secret);
 }
 
