@@ -281,7 +281,6 @@ log_expr_node_new_pipe(LogPipe *pipe, YYLTYPE *yylloc)
   return node;
 }
 
-
 LogExprNode *
 log_expr_node_new_source(const gchar *name, LogExprNode *children, YYLTYPE *yylloc)
 {
@@ -358,6 +357,87 @@ LogExprNode *
 log_expr_node_new_junction(LogExprNode *children, YYLTYPE *yylloc)
 {
   return log_expr_node_new(ENL_JUNCTION, ENC_PIPE, NULL, children, 0, yylloc);
+}
+
+static LogExprNode *
+_locate_last_conditional_along_nested_else_blocks(LogExprNode *head)
+{
+  while (1)
+    {
+      g_assert(head->layout == ENL_JUNCTION);
+
+      LogExprNode *branches = head->children;
+
+      /* a conditional branch always have two children (see the constructor
+       * below), the first one is the "true" branch and the second one is the
+       * "false" branch, as they are constructed as final log channels with
+       * filter statement in the first one as the "if" expression.  */
+
+      /* assert that we only have two children */
+      g_assert(branches != NULL);
+      g_assert(branches->next != NULL);
+      g_assert(branches->next->next == NULL);
+
+      LogExprNode *false_branch = branches->next;
+
+      /* check if this is the last else */
+      if (false_branch->children == NULL)
+        return head;
+      head = false_branch->children;
+    }
+  g_assert_not_reached();
+}
+
+void
+log_expr_node_conditional_set_false_branch_of_the_last_if(LogExprNode *conditional_head_node, LogExprNode *false_expr)
+{
+  LogExprNode *conditional_node = _locate_last_conditional_along_nested_else_blocks(conditional_head_node);
+  LogExprNode *branches = conditional_node->children;
+
+  /* a conditional branch always have two children (see the constructor
+   * below), the first one is the "true" branch and the second one is the
+   * "false" branch, as they are constructed as final log channels with
+   * filter statement in the first one as the "if" expression.  */
+
+  /* assert that we only have two children */
+  g_assert(branches != NULL);
+  g_assert(branches->next != NULL);
+  g_assert(branches->next->next == NULL);
+
+
+  /* construct the new false branch */
+  LogExprNode *false_branch = log_expr_node_new_log(
+                                false_expr,
+                                log_expr_node_lookup_flag("final"),
+                                NULL
+                              );
+
+  /* unlink and free the old one */
+  LogExprNode *old_false_branch = branches->next;
+  branches->next = false_branch;
+  false_branch->parent = conditional_node;
+  log_expr_node_free(old_false_branch);
+}
+
+LogExprNode *
+log_expr_node_new_conditional(LogExprNode *filter_pipe, LogExprNode *true_expr, LogExprNode *false_expr,
+                              YYLTYPE *yylloc)
+{
+  LogExprNode *filter_node = log_expr_node_new_filter(NULL, filter_pipe, NULL);
+  LogExprNode *true_branch = log_expr_node_new_log(
+                               log_expr_node_append_tail(filter_node, true_expr),
+                               log_expr_node_lookup_flag("final"),
+                               NULL
+                             );
+  LogExprNode *false_branch = log_expr_node_new_log(
+                                false_expr,
+                                log_expr_node_lookup_flag("final"),
+                                NULL
+                              );
+  return log_expr_node_new_junction(
+           log_expr_node_append_tail(true_branch, false_branch),
+           yylloc
+         );
 }
 
 gint

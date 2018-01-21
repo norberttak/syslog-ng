@@ -171,10 +171,13 @@ extern struct _StatsOptions *last_stats_options;
 %token KW_BLOCK                       10007
 %token KW_JUNCTION                    10008
 %token KW_CHANNEL                     10009
+%token KW_IF			      10010
+%token KW_ELSE			      10011
+%token KW_ELIF			      10012
 
 /* source & destination items */
-%token KW_INTERNAL                    10010
-%token KW_FILE                        10011
+%token KW_INTERNAL                    10020
+%token KW_FILE                        10021
 %token KW_SYSLOG                      10060
 
 /* option items */
@@ -422,6 +425,8 @@ DNSCacheOptions *last_dns_cache_options;
 %type   <ptr> log_last_junction
 %type   <ptr> log_junction
 %type   <ptr> log_content
+%type   <ptr> log_conditional
+%type   <ptr> log_if
 %type   <ptr> log_forks
 %type   <ptr> log_fork
 
@@ -712,6 +717,7 @@ log_item
         | KW_REWRITE '{' rewrite_content '}'    { $$ = log_expr_node_new_rewrite(NULL, $3, &@$); }
         | KW_DESTINATION '(' string ')'		{ $$ = log_expr_node_new_destination_reference($3, &@$); free($3); }
         | KW_DESTINATION '{' dest_content '}'   { $$ = log_expr_node_new_destination(NULL, $3, &@$); }
+        | log_conditional			{ $$ = $1; }
         | log_junction                          { $$ = $1; }
 	;
 
@@ -740,6 +746,30 @@ log_forks
 log_fork
         : KW_LOG '{' log_content '}'            { $$ = $3; }
         | KW_CHANNEL '{' log_content '}'        { $$ = $3; }
+        ;
+
+log_conditional
+        : log_if				{ $$ = $1; }
+        | log_if KW_ELSE '{' log_content '}'
+          {
+            log_expr_node_conditional_set_false_branch_of_the_last_if($1, $4);
+            $$ = $1;
+          }
+        ;
+
+log_if
+        : KW_IF '(' filter_content ')' '{' log_content '}'
+          {
+            $$ = log_expr_node_new_conditional($3, $6, NULL, &@$);
+          }
+        | log_if KW_ELIF '(' filter_content ')' '{' log_content '}'
+          {
+            LogExprNode *false_branch;
+
+            false_branch = log_expr_node_new_conditional($4, $7, NULL, &@$);
+            log_expr_node_conditional_set_false_branch_of_the_last_if($1, false_branch);
+            $$ = $1;
+          }
         ;
 
 log_content
