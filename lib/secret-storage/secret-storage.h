@@ -47,4 +47,5 @@ void secret_storage_with_secret(gchar *key, SecretStorageCB func, gpointer user_
 Secret *secret_storage_get_secret_by_name(gchar *key) PUBLIC;
 void secret_storage_put_secret(Secret *self) PUBLIC;
 
+gboolean secret_storage_subscribe_for_key(gchar *key, SecretStorageCB func, gpointer user_data) PUBLIC;
 #endif
