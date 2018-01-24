@@ -40,6 +40,7 @@
 #include "crypto.h"
 #include "value-pairs/value-pairs.h"
 #include "scratch-buffers.h"
+#include "lib/secret-storage/secret-storage.h"
 
 #include <iv.h>
 #include <iv_work.h>
@@ -142,6 +143,7 @@ app_startup(void)
   value_pairs_global_init();
   service_management_init();
   scratch_buffers_allocator_init();
+  secret_storage_init();
 }
 
 void
