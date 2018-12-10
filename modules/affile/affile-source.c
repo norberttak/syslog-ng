@@ -72,7 +72,16 @@ static inline const gchar *
 affile_sd_format_persist_name(const LogPipe *s)
 {
   AFFileSourceDriver *self = (AFFileSourceDriver *)s;
-  return log_pipe_get_persist_name(&self->file_reader->super);
+  //return log_pipe_get_persist_name(&self->file_reader->super);
+  static gchar persist_name[1024];
+
+  if (s->persist_name)
+    g_snprintf(persist_name, sizeof(persist_name), "affile_NORBI_sd.%s.readers", s->persist_name);
+  else
+    g_snprintf(persist_name, sizeof(persist_name), "affile_NORBIX_sd_readers(%s)",
+               "test");
+
+  return persist_name;
 }
 
 static void
@@ -93,7 +102,34 @@ _are_multi_line_settings_invalid(AFFileSourceDriver *self)
   return (!is_garbage_mode && !is_suffix_mode) && (multi_line_options->prefix
                                                    || multi_line_options->garbage);
 }
+#if 0
+static gboolean
+affile_sd_restore_reader(AFFileSourceDriver *self)
+{
+  GlobalConfig *cfg = log_pipe_get_config(&self->super.super.super);
+  GList *p = NULL;
+  //self->connections = cfg_persist_config_fetch(cfg, afsocket_sd_format_connections_name(self));
+  self->file_reader = cfg_persist_config_fetch(cfg, affile_sd_format_persist_name(s));
 
+  //self->num_connections = 0;
+  for (p = self->connections; p; p = p->next)
+  {
+//    afsocket_sc_set_owner((AFSocketSourceConnection *) p->data, self);
+    if (log_pipe_init((LogPipe *) p->data))
+    {
+      self->num_connections++;
+    }
+    else
+    {
+      AFSocketSourceConnection *sc = (AFSocketSourceConnection *)p->data;
+
+      self->connections = g_list_remove(self->connections, sc);
+      afsocket_sd_kill_connection((AFSocketSourceConnection *)sc);
+    }
+  }
+  return TRUE;
+}
+#endif
 static gboolean
 affile_sd_init(LogPipe *s)
 {
@@ -103,13 +139,27 @@ affile_sd_init(LogPipe *s)
   if (!log_src_driver_init_method(s))
     return FALSE;
 
+  msg_error("___before cfg_persist_config_fetch");
+  self->file_reader = cfg_persist_config_fetch(cfg, affile_sd_format_persist_name(s));  
+  
+  if (!self->file_reader)
+  {
+    msg_error("___cfg_persist_config_fetch none null");
+    self->file_reader = file_reader_new(self->filename->str, &self->file_reader_options,
+                                      self->file_opener,
+                                      &self->super, cfg);
+  } 
+//  else 
+//  {
+//    log_pipe_init(&self->file_reader->super);
+//  }
+
+  msg_error("___after cfg_persist_config_fetch");
+
   file_reader_options_init(&self->file_reader_options, cfg, self->super.super.group);
   file_opener_options_init(&self->file_opener_options, cfg);
 
   file_opener_set_options(self->file_opener, &self->file_opener_options);
-  self->file_reader = file_reader_new(self->filename->str, &self->file_reader_options,
-                                      self->file_opener,
-                                      &self->super, cfg);
 
   if (_are_multi_line_settings_invalid(self))
     {
@@ -127,8 +177,13 @@ static gboolean
 affile_sd_deinit(LogPipe *s)
 {
   AFFileSourceDriver *self = (AFFileSourceDriver *) s;
+  GlobalConfig *cfg = log_pipe_get_config(s);
 
   log_pipe_deinit(&self->file_reader->super);
+  
+  cfg_persist_config_add(cfg, affile_sd_format_persist_name(s), self->file_reader,
+                             NULL, FALSE);
+
   if (!log_src_driver_deinit_method(s))
     return FALSE;
 

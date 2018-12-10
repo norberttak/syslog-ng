@@ -137,8 +137,8 @@ static void
 _deinit_sd_logreader(FileReader *self)
 {
   log_pipe_deinit((LogPipe *) self->reader);
-  log_pipe_unref((LogPipe *) self->reader);
-  self->reader = NULL;
+//  log_pipe_unref((LogPipe *) self->reader);
+//  self->reader = NULL;
 }
 
 static void
@@ -181,16 +181,44 @@ _reader_open_file(LogPipe *s, gboolean recover_state)
   gint fd;
   gboolean file_opened, open_deferred = FALSE;
 
-  file_opened = file_opener_open_fd(self->opener, self->filename->str, AFFILE_DIR_READ, &fd);
-  if (!file_opened && self->options->follow_freq > 0)
+  if (self->reader) 
+  {
+    log_reader_set_options(self->reader,
+        s,
+        &self->options->reader_options,
+        self->owner->super.id,
+        self->filename->str);
+
+//    if (check_immediately)
+//      log_reader_set_immediate_check(self->reader);
+
+    log_pipe_append((LogPipe *) self->reader, s);
+    
+    if (!log_pipe_init((LogPipe *) self->reader))
+      {
+        msg_error("Error initializing log_reader, closing fd",
+            evt_tag_int("fd", fd));
+        log_pipe_unref((LogPipe *) self->reader);
+        self->reader = NULL;
+        close(fd);
+        return FALSE;
+      }
+
+     // if (recover_state)
+//        _recover_state(s, cfg, proto);
+  } 
+  else
+  {
+    file_opened = file_opener_open_fd(self->opener, self->filename->str, AFFILE_DIR_READ, &fd);
+    if (!file_opened && self->options->follow_freq > 0)
     {
       msg_info("Follow-mode file source not found, deferring open",
-               evt_tag_str("filename", self->filename->str));
+          evt_tag_str("filename", self->filename->str));
       open_deferred = TRUE;
       fd = -1;
     }
 
-  if (file_opened || open_deferred)
+    if (file_opened || open_deferred)
     {
       LogProtoServer *proto;
       PollEvents *poll_events;
@@ -198,33 +226,36 @@ _reader_open_file(LogPipe *s, gboolean recover_state)
 
       poll_events = _construct_poll_events(self, fd);
       if (!poll_events)
-        {
-          close(fd);
-          return FALSE;
-        }
+      {
+        close(fd);
+        return FALSE;
+      }
       proto = _construct_proto(self, fd);
 
       check_immediately = _is_immediate_check_needed(file_opened, open_deferred);
       _setup_logreader(s, poll_events, proto, check_immediately);
       if (!log_pipe_init((LogPipe *) self->reader))
-        {
-          msg_error("Error initializing log_reader, closing fd",
-                    evt_tag_int("fd", fd));
-          log_pipe_unref((LogPipe *) self->reader);
-          self->reader = NULL;
-          close(fd);
-          return FALSE;
-        }
+      {
+        msg_error("Error initializing log_reader, closing fd",
+            evt_tag_int("fd", fd));
+        log_pipe_unref((LogPipe *) self->reader);
+        self->reader = NULL;
+        close(fd);
+        return FALSE;
+      }
       if (recover_state)
         _recover_state(s, cfg, proto);
     }
-  else
+    else
     {
       msg_error("Error opening file for reading",
-                evt_tag_str("filename", self->filename->str),
-                evt_tag_error(EVT_TAG_OSERROR));
+          evt_tag_str("filename", self->filename->str),
+          evt_tag_error(EVT_TAG_OSERROR));
       return self->owner->super.optional;
     }
+  }
+
+  
   return TRUE;
 
 }
