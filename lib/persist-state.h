@@ -119,4 +119,9 @@ void persist_state_free(PersistState *self);
 void persist_state_set_global_error_handler(PersistState *self, void (*handler)(gpointer user_data),
                                             gpointer user_data);
 
+typedef gint (*PersistStateSerializerFunc)(const gchar *name, gpointer block, gchar *buffer, gsize buffer_size);
+PersistStateSerializerFunc persist_state_get_serializer(PersistState *self, const gchar *name);
+void persist_state_register_serializer(PersistState *self, const gchar *name_prefix,
+                                       PersistStateSerializerFunc callback);
+
 #endif
