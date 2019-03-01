@@ -107,7 +107,7 @@
  *
  */
 
-static GHashTable *serializers = NULL;
+static GHashTable *dump_funcs = NULL;
 
 /* everything is big-endian */
 typedef struct _PersistValueHeader
@@ -720,12 +720,12 @@ _map_header_of_entry(PersistState *self, const gchar *persist_name, PersistEntry
 }
 
 void
-persist_state_register_serializer(PersistState *self, const gchar *name_prefix, PersistStateSerializerFunc callback)
+persist_state_register_dump_func(PersistState *self, const gchar *name_prefix, PersistStateDumpFunc callback)
 {
-  if (!serializers)
+  if (!dump_funcs)
     return;
 
-  g_hash_table_insert(serializers, g_strdup(name_prefix), callback);
+  g_hash_table_insert(dump_funcs, g_strdup(name_prefix), callback);
 }
 
 static gboolean
@@ -734,13 +734,20 @@ _search_keys_by_prefix(gpointer prefix, gpointer value, gpointer user_data)
   return g_str_has_prefix((gchar *)user_data, (gchar *)prefix);
 }
 
-PersistStateSerializerFunc
-persist_state_get_serializer(PersistState *self, const gchar *name)
+PersistStateDumpFunc
+persist_state_get_dump_func(PersistState *self, const gchar *name)
 {
-  if (!serializers)
+  if (!dump_funcs)
     return NULL;
 
-  return (PersistStateSerializerFunc)g_hash_table_find(serializers, _search_keys_by_prefix, (gpointer) name);
+  return (PersistStateDumpFunc)g_hash_table_find(dump_funcs, _search_keys_by_prefix, (gpointer) name);
+}
+
+void
+persist_state_dump_header(GKeyFile *keyfile, const gchar *name, PersistableStateHeader *header)
+{
+  g_key_file_set_integer(keyfile, name, "header.version", header->version);
+  g_key_file_set_integer(keyfile, name, "header.big_endian", header->big_endian);
 }
 
 PersistEntryHandle
@@ -953,9 +960,9 @@ _destroy(PersistState *self)
   g_free(self->temp_filename);
   g_free(self->committed_filename);
   g_hash_table_destroy(self->keys);
-  if (serializers)
-    g_hash_table_destroy(serializers);
-  serializers = NULL;
+  if (dump_funcs)
+    g_hash_table_destroy(dump_funcs);
+  dump_funcs = NULL;
 }
 
 static void
@@ -969,8 +976,8 @@ _init(PersistState *self, gchar *committed_filename, gchar *temp_filename)
   self->fd = -1;
   self->committed_filename = committed_filename;
   self->temp_filename = temp_filename;
-  if (!serializers)
-    serializers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+  if (!dump_funcs)
+    dump_funcs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
 }
 
 /*
