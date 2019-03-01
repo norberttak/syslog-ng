@@ -22,6 +22,59 @@
  */
 
 #include "dump.h"
+#include "persistable-state-header.h"
+
+static GKeyFile *keyfile = NULL;
+
+static void
+print_struct_ini_default_style(const gchar *name, gpointer block, gsize block_size)
+{
+  fprintf(stdout,"print_struct_ini_default_style name = %s\n", name);
+  PersistableStateHeader *header = (PersistableStateHeader *) block;
+
+  persist_state_dump_header(keyfile, name, header);
+
+  gsize value_list_size = block_size - sizeof(PersistableStateHeader);
+  gint list[value_list_size];
+  gchar *block_data = (gchar *) (block + sizeof(PersistableStateHeader));
+  for (gsize i=0; i<value_list_size; i++)
+    {
+      list[i] = block_data[i];
+    }
+
+  g_key_file_set_integer_list (keyfile, name, "value", list, value_list_size);
+}
+
+static void
+print_struct_ini_style(gpointer data, gpointer user_data)
+{
+  PersistEntryHandle handle;
+  gsize size;
+  guint8 result_version;
+
+  PersistTool *self = (PersistTool *)user_data;
+  const gchar *name = (const gchar *)data;
+
+  if (!(handle = persist_state_lookup_entry(self->state, name, &size, &result_version)))
+    {
+      fprintf(stderr,"Can't lookup for entry \"%s\"\n", name);
+      return;
+    }
+
+  gpointer block = persist_state_map_entry(self->state, handle);
+
+  PersistStateDumpFunc dump_func = persist_state_get_dump_func(self->state, name);
+  if (dump_func)
+    {
+      dump_func(name, block, keyfile);
+    }
+  else
+    {
+      print_struct_ini_default_style(name, block, size);
+    }
+
+  persist_state_unmap_entry(self->state, handle);
+}
 
 static void
 print_struct_json_style(gpointer data, gpointer user_data)
@@ -74,11 +127,17 @@ dump_main(int argc, char *argv[])
       return 1;
     }
 
+  keyfile = g_key_file_new();
   GList *keys = g_hash_table_get_keys(self->state->keys);
 
-  g_list_foreach(keys, print_struct_json_style, self);
+  g_list_foreach(keys, dump_in_ini_format ? print_struct_ini_style : print_struct_json_style, self);
   g_list_free(keys);
 
+  gchar *keyfile_str = g_key_file_to_data(keyfile, NULL, NULL);
+  fprintf(stdout,"%s", keyfile_str);
+
+  g_key_file_free(keyfile);
+  g_free(keyfile_str);
   persist_tool_free(self);
   return 0;
 }

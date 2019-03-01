@@ -28,6 +28,7 @@
 #include "persist-tool.h"
 #include "reloc.h"
 #include "messages.h"
+#include "apphook.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -37,11 +38,13 @@
 #endif
 
 static void
-load_state_handler_modules(GlobalConfig *cfg)
+load_state_handler_modules(GlobalConfig *cfg, const gchar *persist_filename)
 {
+  app_startup();
   plugin_context_init_instance(&cfg->plugin_context);
   plugin_context_set_module_path(&cfg->plugin_context, (const gchar *)get_installation_path_for(SYSLOG_NG_MODULE_PATH));
   plugin_load_candidate_modules(&cfg->plugin_context);
+  main_loop_initialize_state(cfg, persist_filename);
 }
 
 static gboolean
@@ -109,12 +112,13 @@ persist_tool_new(gchar *persist_filename, PersistStateMode open_mode)
       persist_tool_free(self);
       return NULL;
     }
-  load_state_handler_modules(self->cfg);
+  load_state_handler_modules(self->cfg, self->persist_filename);
   return self;
 }
 
 void persist_tool_free(PersistTool *self)
 {
+  app_shutdown();
   if (self->cfg)
     {
       cfg_free(self->cfg);
@@ -137,6 +141,7 @@ void persist_tool_free(PersistTool *self)
 
 static GOptionEntry dump_options[] =
 {
+  { "ini-style", 'i', 0, G_OPTION_ARG_NONE, &dump_in_ini_format, "Print persist content in ini file format of default JSON style", NULL },
   { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL }
 };
 
