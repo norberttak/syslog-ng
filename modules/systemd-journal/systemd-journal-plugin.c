@@ -26,6 +26,7 @@
 #include "plugin.h"
 #include "plugin-types.h"
 #include "journald-subsystem.h"
+#include "journal-persistable.h"
 
 extern CfgParser systemd_journal_parser;
 
@@ -38,9 +39,19 @@ static Plugin systemd_journal_plugins[] =
   },
 };
 
+static void
+persist_state_dump(const gchar *name, gpointer block, GKeyFile *keyfile)
+{
+  JournalReaderState *reader_state = (JournalReaderState *)block;
+
+  persist_state_dump_header(keyfile, name, &reader_state->header);
+  g_key_file_set_string(keyfile, name, "cursor", reader_state->cursor);
+}
+
 gboolean
 systemd_journal_module_init(PluginContext *context, CfgArgs *args)
 {
+  persist_state_register_dump_func("systemd-journal", persist_state_dump);
   if (!load_journald_subsystem())
     {
       msg_error("Can't find systemd-journal on this system");

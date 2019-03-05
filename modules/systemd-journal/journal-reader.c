@@ -31,6 +31,7 @@
 #include "ack_tracker.h"
 #include "parse-number.h"
 #include "journal-reader.h"
+#include "journal-persistable.h"
 #include "timeutils/timeutils.h"
 
 #include <stdlib.h>
@@ -38,19 +39,11 @@
 
 #define JR_THREADED 0x0001
 
-#define MAX_CURSOR_LENGTH 1024
-
 #define DEFAULT_FIELD_SIZE (64 * 1024)
 #define DEFAULT_PRIO (LOG_LOCAL0 | LOG_NOTICE)
 #define DEFAULT_FETCH_LIMIT 10
 
 static gboolean journal_reader_initialized = FALSE;
-
-typedef struct _JournalReaderState
-{
-  PersistableStateHeader header;
-  gchar cursor[MAX_CURSOR_LENGTH];
-} JournalReaderState;
 
 typedef struct _JournalBookmarkData
 {
