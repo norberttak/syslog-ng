@@ -26,6 +26,7 @@
 #define PERSIST_STATE_H_INCLUDED
 
 #include "syslog-ng.h"
+#include "persistable-state-header.h"
 
 typedef struct _PersistFileHeader
 {
@@ -118,5 +119,10 @@ void persist_state_free(PersistState *self);
 
 void persist_state_set_global_error_handler(PersistState *self, void (*handler)(gpointer user_data),
                                             gpointer user_data);
+
+typedef void (*PersistStateDumpFunc)(const gchar *name, gpointer block, GKeyFile *keyfile);
+PersistStateDumpFunc persist_state_get_dump_func(const gchar *name);
+void persist_state_register_dump_func(const gchar *name_prefix, PersistStateDumpFunc callback);
+void persist_state_dump_header(GKeyFile *keyfile, const gchar *name, PersistableStateHeader *header);
 
 #endif
