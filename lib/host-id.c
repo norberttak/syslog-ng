@@ -43,6 +43,15 @@ _create_host_id(void)
   return host_id.id;
 }
 
+void
+persist_state_dump(const gchar *name, gpointer block, GKeyFile *keyfile)
+{
+  HostIdState *host_id = (HostIdState *)block;
+
+  persist_state_dump_header(keyfile, name, &host_id->header);
+  g_key_file_set_integer(keyfile, name, "host_id", host_id->host_id);
+}
+
 gboolean
 host_id_init(PersistState *state)
 {
@@ -80,6 +89,7 @@ host_id_init(PersistState *state)
   }
   persist_state_unmap_entry(state, handle);
 
+  persist_state_register_dump_func(HOST_ID_PERSIST_KEY, (PersistStateDumpFunc)persist_state_dump);
   return TRUE;
 }
 
