@@ -28,20 +28,38 @@
 #include "persist-tool.h"
 #include "reloc.h"
 #include "messages.h"
+#include "apphook.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "resolved-configurable-paths.h"
 
 #if HAVE_GETOPT_H
 #include <getopt.h>
 #endif
 
 static void
-load_state_handler_modules(GlobalConfig *cfg)
+init_module(gpointer data, gpointer user_data)
 {
+  GlobalConfig *cfg = (GlobalConfig *)user_data;
+  PluginCandidate *plugin = (PluginCandidate *)data;
+  plugin_load_module(&cfg->plugin_context, plugin->module_name, NULL);
+}
+
+static void
+load_state_handler_modules(GlobalConfig *cfg, const gchar *persist_filename)
+{
+  resolved_configurable_paths_init(&resolvedConfigurablePaths);
+  app_startup();
   plugin_context_init_instance(&cfg->plugin_context);
   plugin_context_set_module_path(&cfg->plugin_context, (const gchar *)get_installation_path_for(SYSLOG_NG_MODULE_PATH));
-  plugin_load_candidate_modules(&cfg->plugin_context);
+
+  main_loop_initialize_state(cfg, persist_filename);
+
+  cfg->use_plugin_discovery = 1;
+  cfg_load_candidate_modules(cfg);
+
+  g_list_foreach(cfg->plugin_context.candidate_plugins, (GFunc) init_module, (gpointer) cfg);
 }
 
 static gboolean
@@ -109,12 +127,13 @@ persist_tool_new(gchar *persist_filename, PersistStateMode open_mode)
       persist_tool_free(self);
       return NULL;
     }
-  load_state_handler_modules(self->cfg);
+  load_state_handler_modules(self->cfg, self->persist_filename);
   return self;
 }
 
 void persist_tool_free(PersistTool *self)
 {
+  app_shutdown();
   if (self->cfg)
     {
       cfg_free(self->cfg);
@@ -137,6 +156,7 @@ void persist_tool_free(PersistTool *self)
 
 static GOptionEntry dump_options[] =
 {
+  { "ini-style", 'i', 0, G_OPTION_ARG_NONE, &dump_in_ini_format, "Print persist content in ini file format of default JSON style", NULL },
   { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL }
 };
 

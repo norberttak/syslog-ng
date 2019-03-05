@@ -32,6 +32,8 @@
 #include "persist-state.h"
 #include "cfg.h"
 
+gboolean dump_in_ini_format;
+
 gint dump_main(int argc, char *argv[]);
 
 #endif
