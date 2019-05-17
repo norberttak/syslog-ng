@@ -6,14 +6,72 @@
 trigger:
 - master
 
-pool:
-  vmImage: 'ubuntu-latest'
-
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
-
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+jobs: 
+- job: Build_Ubuntu_1604
+  pool:  
+    vmImage: 'ubuntu-16.04'
+  steps:
+  - task: Bash@3
+    inputs:
+      targetType: 'inline'
+      script: |
+        wget -qO - http://download.opensuse.org/repositories/home:/laszlo_budai:/syslog-ng/xUbuntu_16.04/Release.key | sudo apt-key add -
+        sudo apt-add-repository 'deb http://download.opensuse.org/repositories/home:/laszlo_budai:/syslog-ng/xUbuntu_16.04 ./'
+        sudo apt update
+        export PACKAGES_TO_INSTALL='autoconf-archive 
+        bison 
+        docbook-xsl 
+        flex
+        gradle-2.2.1
+        libcap-dev
+        libdbd-sqlite3
+        libdbi0-dev
+        libesmtp-dev
+        libgeoip-dev
+        libglib2.0-dev
+        libhiredis-dev
+        libivykis-dev
+        librabbitmq-dev
+        libmongoc-dev
+        libjson0-dev
+        libnet1-dev
+        libriemann-client-dev
+        librdkafka-dev
+        libwrap0-dev
+        pkg-config
+        sqlite3
+        xsltproc
+        criterion-dev
+        libmaxminddb-dev
+        libxml2-utils
+        doxygen'
+        sudo apt install $PACKAGES_TO_INSTALL
+        pip install --user -r requirements.txt
+        pip list
+        echo 'Europe/Budapest' | sudo tee /etc/timezone
+        sudo dpkg-reconfigure --frontend noninteractive tzdata
+        ./autogen.sh
+        mkdir build
+        cd build
+        export CONFIGURE_FLAGS='--prefix=$(pwd)/install 
+        --with-ivykis=internal 
+        --enable-mongodb=no 
+        --with-jsonc=system 
+        --disable-env-wrapper 
+        --disable-memtrace 
+        --enable-tcp-wrapper 
+        --enable-linux-caps 
+        --disable-sun-streams 
+        --enable-all-modules 
+        --disable-sql 
+        --enable-pacct 
+        --enable-manpages 
+        --enable-force-gnu99 
+        --with-python=2 
+        --enable-extra-warnings'
+        .././configure $CONFIGURE_FLAGS
+        make
+        make isntall
+        export DISTCHECK_CONFIGURE_FLAGS="$CONFIGURE_FLAGS";
+        make distcheck -j 3 V=1 --keep-going
+      noRc: false
